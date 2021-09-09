@@ -1,4 +1,5 @@
 import abc
+import importlib
 import inspect
 import logging
 from collections import defaultdict
@@ -70,3 +71,26 @@ class ModuleScanningPluginCollector(PluginCollector):
                         pass
 
         return plugins
+
+
+class PackageFinderPluginCollector(ModuleScanningPluginCollector):
+    def __init__(self, where=".", exclude=(), include=("*",)) -> None:
+        self.where = where
+        self.exclude = exclude
+        self.include = include
+
+        super().__init__(self.list_modules())
+
+    def list_modules(self):
+        from setuptools import find_packages
+
+        packages = find_packages(self.where, self.exclude, self.include)
+
+        for package in packages:
+            try:
+                module = importlib.import_module(
+                    package
+                )  # FIXME this does not load modules, but packages!
+                yield module
+            except Exception:
+                LOG.exception("error while importing module %s", package)
